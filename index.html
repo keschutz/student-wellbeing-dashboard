@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Student Social Media & Wellbeing Dashboard</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--fg:#1c2533;--muted:#5b6678;--line:#dfe4ec;--accent:#2563eb;--pos:#0f9d8a;--neu:#e0a100;--neg:#d6403a;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10151d;--card:#192230;--fg:#e8edf5;--muted:#9aa7bb;--line:#2b3649;--accent:#6ea0ff;--pos:#3cc9b4;--neu:#f2c14e;--neg:#ff7a72;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10151d;--card:#192230;--fg:#e8edf5;--muted:#9aa7bb;--line:#2b3649;--accent:#6ea0ff;--pos:#3cc9b4;--neu:#f2c14e;--neg:#ff7a72;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.6rem;margin:0 0 4px}h2{font-size:1.05rem;margin:0 0 10px}
+.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.hdr{margin-bottom:16px}.hdr p{margin:4px 0;max-width:820px}
+.up{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn,button{font:inherit;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+button.alt{background:transparent;color:var(--fg);border:1px solid var(--line)}button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ok{margin:12px 0;padding:10px 14px;border-radius:8px;background:color-mix(in srgb,var(--pos) 15%,transparent);border:1px solid var(--pos)}
+.er{margin:12px 0;padding:10px 14px;border-radius:8px;background:color-mix(in srgb,var(--neg) 15%,transparent);border:1px solid var(--neg)}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
+label{display:flex;flex-direction:column;font-size:.8rem;color:var(--muted);gap:4px}
+select,input[type=search]{font:inherit;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);width:100%}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi b{display:block;font-size:1.5rem}.kpi span{font-size:.8rem;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px;margin-bottom:16px}
+.tog{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.tog button{padding:5px 10px;font-size:.85rem}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:600}
+.pg{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+ul{margin:0;padding-left:20px}li{margin-bottom:6px}
+.tag{padding:1px 8px;border-radius:99px;font-size:.78rem;color:#fff}
+input[type=number],input[type=date],input[type=text]{font:inherit;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);width:100%;max-width:150px}
+input[type=color]{height:36px;width:60px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+details.adv{margin:0 0 12px;padding:12px 16px}summary{cursor:pointer;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-top:12px}
+.brand{display:flex;gap:12px;align-items:center}.brand img{height:48px;max-width:160px;object-fit:contain;border-radius:8px}
+button:disabled{opacity:.5;cursor:default}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-is@18.3.1/umd/react-is.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+<script>
+const {useState,useMemo,useEffect,useDeferredValue}=React,R=window.Recharts,h=React.createElement;
+const NUM=['Age','Daily_Usage_Hours','Weekend_Extra_Hours','Sleep_Duration_Hours','Sleep_Quality_Score','Perceived_Stress_Score','Mental_Health_Index','Academic_Performance_GPA'];
+const REQ=[...NUM,'Student_ID','Gender','Academic_Level','Primary_Platform','Device_Type','Late_Night_Usage','Overall_Impact'];
+const BANDS=['≤2','2–4','4–6','6–8','8–10','10+'];
+const band=v=>v<=2?BANDS[0]:v<=4?BANDS[1]:v<=6?BANDS[2]:v<=8?BANDS[3]:v<=10?BANDS[4]:BANDS[5];
+const IMP=['Beneficial','Neutral','Negative'],COL={Beneficial:'var(--pos)',Neutral:'var(--neu)',Negative:'var(--neg)'};
+const MET={Mental_Health_Index:['Mental health index',[0,100]],Academic_Performance_GPA:['GPA',[0,4]],Sleep_Duration_Hours:['Sleep (hrs)',[0,10]],Perceived_Stress_Score:['Stress (PSS, 0–40)',[0,40]]};
+const DIMS={Primary_Platform:'Primary platform',Gender:'Gender',Academic_Level:'Academic level',Device_Type:'Device'};
+const AX={stroke:'var(--muted)',tick:{fill:'var(--muted)',fontSize:12}};
+const tip={contentStyle:{background:'var(--card)',border:'1px solid var(--line)',borderRadius:8,color:'var(--fg)'}};
+const ok=a=>a.filter(v=>v!=null);
+const avg=(a,k)=>{const v=ok(a.map(r=>r[k]));return v.length?v.reduce((s,x)=>s+x,0)/v.length:null};
+const pct=(a,fn)=>a.length?100*a.filter(fn).length/a.length:null;
+const fx=(v,d=1)=>v==null?'–':v.toFixed(d);
+const r2=v=>v==null?null:Math.round(v*100)/100;
+function corr(a,x,y){const p=a.filter(r=>r[x]!=null&&r[y]!=null);if(p.length<3)return null;const mx=avg(p,x),my=avg(p,y);let sxy=0,sx=0,sy=0;p.forEach(r=>{const dx=r[x]-mx,dy=r[y]-my;sxy+=dx*dy;sx+=dx*dx;sy+=dy*dy});return sx&&sy?sxy/Math.sqrt(sx*sy):null}
+function parseCSV(t){const rows=[];let r=[],f='',q=false;t=t.replace(/^\uFEFF/,'');
+for(let i=0;i<t.length;i++){const c=t[i];
+if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+else if(c=='"')q=true;else if(c==','){r.push(f);f=''}
+else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;r.push(f);f='';if(r.length>1||r[0]!=='')rows.push(r);r=[]}else f+=c}
+if(f!==''||r.length){r.push(f);rows.push(r)}return rows}
+const div=(p,...c)=>h('div',p,...c);
+const Card=(title,body,extra)=>div({className:'card'},h('h2',null,title),extra,body);
+const Chart=(height,chart)=>h(R.ResponsiveContainer,{width:'100%',height},chart);
+const F0={Academic_Level:'All',Gender:'All',Primary_Platform:'All',Device_Type:'All',Late:'All'};
+const ADV=[['Age','Age'],['Weekend_Extra_Hours','Weekend extra hrs'],['Sleep_Duration_Hours','Sleep hrs'],['Sleep_Quality_Score','Sleep quality (1–5)'],['Perceived_Stress_Score','Stress (PSS)'],['Mental_Health_Index','Mental health'],['Academic_Performance_GPA','GPA']];
+const B0={org:'',color:'',logo:'',theme:'auto'};
+const DESC={Student_ID:'a unique ID for each student',Age:'student age (15–26)',Gender:'self-reported gender',Academic_Level:'High School, Undergraduate or Postgraduate',Primary_Platform:'the platform used most often',Daily_Usage_Hours:'average daily social media hours',Weekend_Extra_Hours:'extra hours on weekends',Device_Type:'main device used',Sleep_Duration_Hours:'average nightly sleep',Sleep_Quality_Score:'self-rated sleep quality (1–5)',Late_Night_Usage:'frequent use past midnight (True/False)',Social_Comparison_Frequency:'how often the student compares themselves to others',Perceived_Stress_Score:'stress score (0–40)',Mental_Health_Index:'overall wellbeing score',Academic_Performance_GPA:'cumulative GPA (4.0 scale)',Overall_Impact:'Beneficial, Neutral or Negative rating'};
+const esc=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+
+function App(){
+ const [data,setData]=useState(null),[msg,setMsg]=useState(''),[err,setErr]=useState('');
+ const [f,setF]=useState(F0),[rng,setRng]=useState([0,15]),[lim,setLim]=useState([0,15]);
+ const [q,setQ]=useState(''),[pg,setPg]=useState(0),[met,setMet]=useState('Mental_Health_Index'),[dim,setDim]=useState('Primary_Platform');
+ const [prob,setProb]=useState(null),[sf,setSf]=useState('all'),[adv,setAdv]=useState({}),[imp,setImp]=useState([]),[sc,setSc]=useState('All'),[noMiss,setNoMiss]=useState(false),[dateCol,setDateCol]=useState(''),[dr,setDr]=useState(['','']),[dl,setDl]=useState(null),[note,setNote]=useState('');
+ const [br,setBr]=useState(()=>{try{return JSON.parse(localStorage.getItem('brand'))||B0}catch(e){return B0}});
+ useEffect(()=>{let live=true;try{window.claude&&window.claude.use('downloads').then(d=>{if(live)setDl(d)}).catch(()=>{})}catch(e){}return()=>{live=false}},[]);
+ useEffect(()=>{const s=document.documentElement;br.color?s.style.setProperty('--accent',br.color):s.style.removeProperty('--accent');br.theme=='auto'?s.removeAttribute('data-theme'):s.setAttribute('data-theme',br.theme);try{localStorage.setItem('brand',JSON.stringify(br))}catch(e){}},[br]);
+ function onLogo(ev){const fl=ev.target.files[0];if(!fl)return;if(fl.size>3e5){setErr('The logo must be under 300 KB.');return}const rd=new FileReader();rd.onload=e=>setBr(b=>({...b,logo:e.target.result}));rd.readAsDataURL(fl)}
+ const setA=(k,i,v)=>{const c=[...(adv[k]||['',''])];c[i]=v;setAdv({...adv,[k]:c});setPg(0)};
+ const pass=r=>{if(imp.length&&!imp.includes(r.Overall_Impact))return false;if(sc!='All'&&r.Social_Comparison_Frequency!=sc)return false;if(noMiss&&NUM.some(k=>r[k]==null))return false;
+  for(const k in adv){const a=adv[k][0],b=adv[k][1],v=r[k];if(a===''&&b==='')continue;if(v==null||(a!==''&&v<+a)||(b!==''&&v>+b))return false}
+  if(dateCol){if(dr[0]&&!(r._t>=Date.parse(dr[0])))return false;if(dr[1]&&!(r._t<=Date.parse(dr[1])+864e5-1))return false}return true};
+ const fdesc=()=>{const d=[];Object.keys(F0).forEach(k=>{if(f[k]!='All')d.push(k=='Late'?'late-night use: '+(f[k]=='true'?'yes':'no'):f[k])});if(rng[0]!=lim[0]||rng[1]!=lim[1])d.push(rng[0]+'–'+rng[1]+' hrs/day');if(imp.length)d.push(imp.join(' or ')+' impact');if(sc!='All')d.push('comparison: '+sc);if(noMiss)d.push('complete records only');if(Object.values(adv).some(x=>x[0]!==''||x[1]!==''))d.push('custom ranges');if(dr[0]||dr[1])d.push('date range');return d};
+ const nAdv=Object.values(adv).filter(x=>x[0]!==''||x[1]!=='').length+(imp.length?1:0)+(sc!='All'?1:0)+(noMiss?1:0)+(dr[0]||dr[1]?1:0);
+
+ function onFile(ev){const file=ev.target.files[0];if(!file)return;setErr('');setProb(null);
+  const rd=new FileReader();
+  rd.onerror=()=>setErr('Could not read that file.');
+  rd.onload=e=>{try{
+   const rows=parseCSV(e.target.result),hd=rows[0].map(s=>s.trim()),miss=REQ.filter(c=>!hd.includes(c));
+   if(miss.length){setData(null);setMsg('');setProb({miss,found:hd.filter(Boolean)});return}
+   const d=rows.slice(1).filter(a=>a.length>=hd.length-1).map(a=>{const o={};hd.forEach((k,i)=>o[k]=(a[i]||'').trim());
+    NUM.forEach(k=>{const v=o[k];o[k]=v===''||isNaN(+v)?null:+v});o.Late=o.Late_Night_Usage.toLowerCase()==='true';o._s=[o.Student_ID,o.Gender,o.Academic_Level,o.Primary_Platform,o.Overall_Impact,o.Age].join(' ').toLowerCase();return o});
+   const dc=hd.find(c=>!REQ.includes(c)&&/date|time|day|month|year/i.test(c)&&d.length&&d.slice(0,50).every(r=>/\d{4}-\d{2}|\d+\/\d+\/\d+/.test(r[c])&&!isNaN(Date.parse(r[c]))));
+   if(dc)d.forEach(r=>r._t=Date.parse(r[dc]));setDateCol(dc||'');setDr(['','']);setAdv({});setImp([]);setSc('All');setNoMiss(false);
+   if(!d.length){setData(null);setMsg('');setErr('The file has column names but no student rows. Add data below the header row and try again.');return}
+   const u=ok(d.map(r=>r.Daily_Usage_Hours)),b=[Math.floor(Math.min(...u)),Math.ceil(Math.max(...u))];
+   setLim(b);setRng(b);setF(F0);setQ('');setPg(0);setData(d);
+   setMsg('Loaded '+d.length.toLocaleString()+' rows and '+hd.length+' columns from '+file.name);
+  }catch(x){setData(null);setMsg('');setErr('We couldn’t read this file. Please check that it is a non-empty, comma-separated CSV and try again.')}};
+  rd.readAsText(file)}
+
+ const rowsNow=useMemo(()=>!data?[]:data.filter(r=>(f.Academic_Level=='All'||r.Academic_Level==f.Academic_Level)&&(f.Gender=='All'||r.Gender==f.Gender)&&(f.Primary_Platform=='All'||r.Primary_Platform==f.Primary_Platform)&&(f.Device_Type=='All'||r.Device_Type==f.Device_Type)&&(f.Late=='All'||String(r.Late)==f.Late)&&r.Daily_Usage_Hours!=null&&r.Daily_Usage_Hours>=rng[0]&&r.Daily_Usage_Hours<=rng[1]&&pass(r)),[data,f,rng,adv,imp,sc,noMiss,dr,dateCol]);
+ const rows=useDeferredValue(rowsNow);
+
+ const bd=useMemo(()=>BANDS.map(b=>{const g=rows.filter(r=>r.Daily_Usage_Hours!=null&&band(r.Daily_Usage_Hours)==b);const o={band:b,n:g.length};
+  Object.keys(MET).forEach(k=>o[k]=r2(avg(g,k)));IMP.forEach(i=>o[i]=g.length?r2(pct(g,r=>r.Overall_Impact==i)):0);return o}),[rows]);
+ const pie=IMP.map(i=>({name:i,value:rows.filter(r=>r.Overall_Impact==i).length}));
+ const scat=useMemo(()=>IMP.map(i=>{const g=rows.filter(r=>r.Overall_Impact==i&&r.Mental_Health_Index!=null),s=Math.max(1,Math.ceil(g.length/500));return{i,d:g.filter((_,k)=>k%s==0).map(r=>({Daily_Usage_Hours:r.Daily_Usage_Hours,Mental_Health_Index:r.Mental_Health_Index}))}}),[rows]);
+ const dd=useMemo(()=>{const m={};rows.forEach(r=>(m[r[dim]]=m[r[dim]]||[]).push(r));return Object.keys(m).sort().map(k=>({name:k,n:m[k].length,v:r2(avg(m[k],'Mental_Health_Index'))}))},[rows,dim]);
+ const optMap=useMemo(()=>{const m={};if(data)['Academic_Level','Gender','Primary_Platform','Device_Type','Social_Comparison_Frequency'].forEach(k=>m[k]=['All',...[...new Set(data.map(r=>r[k]))].sort()]);return m},[data]);
+ const opts=k=>optMap[k]||['All'];
+ const hasSC=!!(data&&data[0]&&data[0].Social_Comparison_Frequency!==undefined);
+ const filt=(label,k,o)=>h('label',{key:k},label,h('select',{value:f[k],onChange:e=>{setF({...f,[k]:e.target.value});setPg(0)}},o.map(v=>h('option',{key:v,value:v},v=='true'?'Yes':v=='false'?'No':v))));
+
+ const hv=rows.filter(r=>r.Daily_Usage_Hours>=8),lt=rows.filter(r=>r.Daily_Usage_Hours<8),ln=rows.filter(r=>r.Late),nl=rows.filter(r=>!r.Late);
+ const spread=(()=>{const g=dd.filter(x=>x.n>=30&&x.v!=null).map(x=>x.v);return g.length>1?Math.max(...g)-Math.min(...g):null})();
+ const cr=corr(rows,'Daily_Usage_Hours','Mental_Health_Index');
+ const ins=[];
+ if(rows.length>=20){
+  if(hv.length&&lt.length)ins.push('Students using social media 8+ hours a day ('+fx(100*hv.length/rows.length)+'% of this selection) average a mental health index of '+fx(avg(hv,'Mental_Health_Index'),0)+', versus '+fx(avg(lt,'Mental_Health_Index'),0)+' for lighter users. Their GPA averages '+fx(avg(hv,'Academic_Performance_GPA'),2)+' versus '+fx(avg(lt,'Academic_Performance_GPA'),2)+'.');
+  if(hv.length&&lt.length)ins.push('Sleep follows the same pattern: heavy users average '+fx(avg(hv,'Sleep_Duration_Hours'))+' hours a night, compared with '+fx(avg(lt,'Sleep_Duration_Hours'))+' hours for others.');
+  ins.push(fx(pct(hv,r=>r.Overall_Impact=='Negative'),0)+'% of 8+ hour users are labelled “Negative”, versus '+fx(pct(lt,r=>r.Overall_Impact=='Negative'),1)+'% of lighter users. '+rows.filter(r=>r.Overall_Impact=='Negative'&&r.Daily_Usage_Hours<6).length+' “Negative” students use under 6 hours a day.');
+  if(data.length!==rows.length)ins.push('Compared with all '+data.length.toLocaleString()+' students, this selection averages '+fx(avg(rows,'Mental_Health_Index'),0)+' on mental health (overall: '+fx(avg(data,'Mental_Health_Index'),0)+') and a GPA of '+fx(avg(rows,'Academic_Performance_GPA'),2)+' (overall: '+fx(avg(data,'Academic_Performance_GPA'),2)+').');
+  if(rows.length<100)ins.push('Caution: this is a small group ('+rows.length+' students), so averages can swing a lot. Treat these findings as indicative only.');
+  if(cr!=null)ins.push('Daily usage and the mental health index have a correlation of '+fx(cr,2)+' in this selection. This is an association, not proof that usage causes the difference.');
+  if(ln.length&&nl.length)ins.push('Frequent late-night users score '+fx(avg(ln,'Mental_Health_Index'),0)+' on mental health versus '+fx(avg(nl,'Mental_Health_Index'),0)+' for others, but late-night use is much more common among heavy users, so usage hours explain most of that gap.');
+  if(spread!=null)ins.push('Across the groups in “'+DIMS[dim]+'” the average mental health index differs by only '+fx(spread)+' points, so the amount of use matters far more than who the student is or which app they use.');
+ }else ins.push('Too few students match the current filters to summarise. Widen the filters.');
+
+ const s=useDeferredValue(q).trim().toLowerCase(),tbl=s?(sf=='all'?rows.filter(r=>r._s.includes(s)):rows.filter(r=>String(r[sf]).toLowerCase().includes(s))):rows;
+ const exp=(name,text)=>dl.save({filename:name,data:'\uFEFF'+text}).then(()=>setNote('Export ready: '+name),e=>setNote(e&&e.code=='declined'?'':'Export is not available in this view.'));
+ const cols=data?Object.keys(data[0]).filter(k=>k[0]!='_'&&k!='Late'):[];
+ const expRows=()=>exp('filtered_students.csv',[cols.join(','),...tbl.map(r=>cols.map(k=>esc(r[k])).join(','))].join('\n'));
+ const expSum=()=>exp('usage_band_summary.csv',['Usage band,Students,Mental health,GPA,Sleep hrs,Stress,% Beneficial,% Neutral,% Negative',...bd.map(b=>[b.band,b.n,b.Mental_Health_Index,b.Academic_Performance_GPA,b.Sleep_Duration_Hours,b.Perceived_Stress_Score,b.Beneficial,b.Neutral,b.Negative].map(esc).join(','))].join('\n'));
+ const expIns=()=>exp('key_findings.txt','Key findings for '+rows.length+' students\n\n'+ins.map(t=>'- '+t).join('\n'));
+ const PS=12,pages=Math.max(1,Math.ceil(tbl.length/PS)),cp=Math.min(pg,pages-1),slice=tbl.slice(cp*PS,cp*PS+PS);
+ const TC=[['Student_ID','ID'],['Age','Age'],['Gender','Gender'],['Academic_Level','Level'],['Primary_Platform','Platform'],['Daily_Usage_Hours','Usage hrs'],['Sleep_Duration_Hours','Sleep hrs'],['Mental_Health_Index','Mental health'],['Perceived_Stress_Score','Stress'],['Academic_Performance_GPA','GPA'],['Overall_Impact','Impact']];
+ const kpi=(l,v,sub)=>div({className:'card kpi',key:l},h('span',null,l),h('b',null,v),h('span',null,sub||'\u00a0'));
+
+ return div(null,
+  div({className:'hdr'},h('div',{className:'brand'},br.logo&&h('img',{src:br.logo,alt:''}),h('div',null,br.org&&h('div',{className:'muted'},br.org),h('h1',null,'Student Social Media & Wellbeing Dashboard'))),
+   h('p',{className:'muted'},'An overview for educators and counselors of how daily social media use relates to sleep, stress, mental health and grades. Figures describe groups of students, never individuals, and show associations rather than causes.'),
+   h('p',{className:'muted'},'Upload the “Social_media_impact_on_life.csv” file to begin.')),
+  div({className:'card up'},h('label',{className:'btn'},'Upload CSV',h('input',{type:'file',accept:'.csv,text/csv',onChange:onFile,style:{display:'none'}})),
+   data&&h('span',{className:'muted'},'Choose a different file to reload.')),
+  h('details',{className:'card adv',style:{marginTop:12}},h('summary',null,'Branding & appearance'),div({className:'row'},
+   h('label',null,'Organization name',h('input',{type:'text',value:br.org,onChange:e=>setBr({...br,org:e.target.value})})),
+   h('label',null,'Accent color',h('input',{type:'color',value:br.color||'#2563eb',onChange:e=>setBr({...br,color:e.target.value})})),
+   h('label',null,'Theme',h('select',{value:br.theme,onChange:e=>setBr({...br,theme:e.target.value}),style:{maxWidth:150}},['auto','light','dark'].map(v=>h('option',{key:v,value:v},v)))),
+   h('label',null,'Logo (image, up to 300 KB)',h('input',{type:'file',accept:'image/*',onChange:onLogo})),
+   h('button',{className:'alt',onClick:()=>setBr(B0)},'Reset branding'))),
+  msg&&div({className:'ok',role:'status'},msg),err&&div({className:'er',role:'alert'},err),
+  prob&&div({className:'er',role:'alert'},h('h2',null,'We couldn’t build the dashboard from this file'),h('p',{style:{margin:'0 0 8px'}},'The file is missing '+prob.miss.length+' column'+(prob.miss.length>1?'s':'')+' the dashboard needs:'),h('ul',null,prob.miss.map(c=>h('li',{key:c},h('b',null,c),' – '+(DESC[c]||'')))),h('p',{style:{margin:'8px 0 4px'}},'What to try:'),h('ul',null,h('li',null,'Check that you chose Social_media_impact_on_life.csv and not a different file.'),h('li',null,'Make sure the first row holds the column names, spelled exactly as above (capital letters and underscores count).'),h('li',null,'Save the file again as a comma-separated CSV if it came from Excel or uses semicolons.')),h('details',null,h('summary',null,'Columns found in your file ('+prob.found.length+')'),h('p',{className:'muted'},prob.found.join(', ')||'none'))),
+  !data&&!err&&!prob&&div({className:'card',style:{marginTop:16}},h('p',{className:'muted',style:{margin:0}},'No data loaded yet. Charts appear after you upload the file. The file stays in your browser and is not sent anywhere.')),
+  data&&div(null,
+   div({className:'filters'},
+    filt('Academic level','Academic_Level',opts('Academic_Level')),filt('Gender','Gender',opts('Gender')),
+    filt('Primary platform','Primary_Platform',opts('Primary_Platform')),filt('Device','Device_Type',opts('Device_Type')),
+    filt('Frequent late-night use','Late',['All','true','false']),
+    h('label',null,'Daily usage: '+rng[0]+'–'+rng[1]+' hrs',h('input',{type:'range',min:lim[0],max:lim[1],step:1,value:rng[0],onChange:e=>{setRng([Math.min(+e.target.value,rng[1]),rng[1]]);setPg(0)}}),
+     h('input',{type:'range',min:lim[0],max:lim[1],step:1,value:rng[1],onChange:e=>{setRng([rng[0],Math.max(+e.target.value,rng[0])]);setPg(0)}})),
+    h('label',null,'\u00a0',h('button',{className:'alt',onClick:()=>{setF(F0);setRng(lim);setAdv({});setImp([]);setSc('All');setNoMiss(false);setDr(['','']);setPg(0)}},'Reset filters'))),
+   h('details',{className:'card adv'},h('summary',null,'Advanced filters'+(nAdv?' ('+nAdv+' active)':'')),
+    div({className:'row'},ADV.map(a=>h('label',{key:a[0]},a[1],div({className:'row',style:{marginTop:0,gap:6,flexWrap:'nowrap'}},h('input',{type:'number',placeholder:'min',value:(adv[a[0]]||['',''])[0],onChange:e=>setA(a[0],0,e.target.value)}),h('input',{type:'number',placeholder:'max',value:(adv[a[0]]||['',''])[1],onChange:e=>setA(a[0],1,e.target.value)}))))),
+    div({className:'row'},h('span',{className:'muted'},'Impact rating:'),IMP.map(i=>h('button',{key:i,className:imp.includes(i)?'on':'alt',onClick:()=>{setImp(imp.includes(i)?imp.filter(x=>x!=i):[...imp,i]);setPg(0)}},i)),
+     hasSC&&h('label',null,'Social comparison',h('select',{value:sc,onChange:e=>{setSc(e.target.value);setPg(0)}},opts('Social_Comparison_Frequency').map(v=>h('option',{key:v,value:v},v)))),
+     h('label',{style:{flexDirection:'row',alignItems:'center'}},h('input',{type:'checkbox',checked:noMiss,onChange:e=>{setNoMiss(e.target.checked);setPg(0)}}),'Exclude students with missing values')),
+    div({className:'row'},h('label',null,'Date from',h('input',{type:'date',disabled:!dateCol,value:dr[0],onChange:e=>{setDr([e.target.value,dr[1]]);setPg(0)}})),h('label',null,'Date to',h('input',{type:'date',disabled:!dateCol,value:dr[1],onChange:e=>{setDr([dr[0],e.target.value]);setPg(0)}})),
+     h('span',{className:'muted',style:{maxWidth:420,fontSize:'.85rem'}},dateCol?'Filtering by “'+dateCol+'”.':'This file has no date column, so the date pickers are inactive. They switch on automatically when a dataset includes one.'))),
+   div({className:'muted',style:{marginBottom:10}},'Showing '+rows.length.toLocaleString()+' of '+data.length.toLocaleString()+' students'),
+   div({className:'kpis'},kpi('Students',rows.length.toLocaleString()),kpi('Avg daily usage',fx(avg(rows,'Daily_Usage_Hours'))+' hrs','+'+fx(avg(rows,'Weekend_Extra_Hours'))+' hrs on weekends'),
+    kpi('Heavy users (8+ hrs)',fx(pct(rows,r=>r.Daily_Usage_Hours>=8))+'%'),kpi('Mental health index',fx(avg(rows,'Mental_Health_Index')),'higher is better'),
+    kpi('Avg sleep',fx(avg(rows,'Sleep_Duration_Hours'))+' hrs',fx(pct(rows,r=>r.Sleep_Duration_Hours<7),0)+'% under 7 hrs'),kpi('Stress (PSS)',fx(avg(rows,'Perceived_Stress_Score')),'scale 0–40'),
+    kpi('Average GPA',fx(avg(rows,'Academic_Performance_GPA'),2),'4.0 scale'),kpi('Rated “Negative”',fx(pct(rows,r=>r.Overall_Impact=='Negative'))+'%'),kpi('Frequent late-night use',fx(pct(rows,r=>r.Late),0)+'%')),
+   !R?null:div({className:'grid'},
+    Card('Outcomes by daily usage',Chart(280,h(R.LineChart,{data:bd},h(R.CartesianGrid,{stroke:'var(--line)',strokeDasharray:'3 3'}),h(R.XAxis,{dataKey:'band',...AX,label:{value:'Daily hours',position:'insideBottom',offset:-2,fill:'var(--muted)',fontSize:12}}),h(R.YAxis,{...AX,domain:MET[met][1]}),
+      h(R.Tooltip,{...tip,formatter:(v,n,p)=>[v+' (n='+p.payload.n+')',MET[met][0]]}),h(R.ReferenceLine,{x:'8–10',stroke:'var(--neg)',strokeDasharray:'4 4',label:{value:'8+ hrs',fill:'var(--neg)',fontSize:12,position:'top'}}),
+      h(R.Line,{dataKey:met,stroke:'var(--accent)',strokeWidth:3,dot:{r:4},connectNulls:true,isAnimationActive:false}))),
+     div({className:'tog'},Object.keys(MET).map(k=>h('button',{key:k,className:k==met?'on':'alt',onClick:()=>setMet(k)},MET[k][0])))),
+    Card('Share of each impact rating by usage (%)',Chart(280,h(R.BarChart,{data:bd},h(R.CartesianGrid,{stroke:'var(--line)',strokeDasharray:'3 3'}),h(R.XAxis,{dataKey:'band',...AX}),h(R.YAxis,{...AX,domain:[0,100]}),h(R.Tooltip,{...tip,formatter:v=>v+'%'}),h(R.Legend,null),
+      IMP.map(i=>h(R.Bar,{key:i,dataKey:i,stackId:'a',fill:COL[i],isAnimationActive:false}))))),
+    Card('Overall impact mix',Chart(280,h(R.PieChart,null,h(R.Tooltip,tip),h(R.Legend,null),h(R.Pie,{data:pie,dataKey:'value',nameKey:'name',innerRadius:55,outerRadius:95,label:true,isAnimationActive:false},pie.map(p=>h(R.Cell,{key:p.name,fill:COL[p.name]})))))),
+    Card('Usage vs mental health (each dot is a student)',Chart(280,h(R.ScatterChart,null,h(R.CartesianGrid,{stroke:'var(--line)',strokeDasharray:'3 3'}),h(R.XAxis,{type:'number',dataKey:'Daily_Usage_Hours',name:'Daily hours',...AX}),h(R.YAxis,{type:'number',dataKey:'Mental_Health_Index',name:'Mental health',domain:[0,100],...AX}),h(R.Tooltip,{...tip,cursor:{strokeDasharray:'3 3'}}),h(R.Legend,null),
+      scat.map(g=>h(R.Scatter,{key:g.i,name:g.i,data:g.d,fill:COL[g.i],fillOpacity:.55,isAnimationActive:false}))))),
+    Card('Does it depend on who the student is?',Chart(280,h(R.BarChart,{data:dd},h(R.CartesianGrid,{stroke:'var(--line)',strokeDasharray:'3 3'}),h(R.XAxis,{dataKey:'name',...AX}),h(R.YAxis,{...AX,domain:[0,100]}),h(R.Tooltip,{...tip,formatter:(v,n,p)=>[v+' (n='+p.payload.n+')','Avg mental health index']}),h(R.Bar,{dataKey:'v',fill:'var(--accent)',isAnimationActive:false}))),
+     div({className:'tog'},Object.keys(DIMS).map(k=>h('button',{key:k,className:k==dim?'on':'alt',onClick:()=>setDim(k)},DIMS[k]))))),
+   !R&&div({className:'er'},'Charts could not load. Check your connection and reload.'),
+   div({className:'card',style:{marginBottom:16}},h('h2',null,'Key findings for this selection'),h('p',{className:'muted',style:{margin:'0 0 8px'}},'Based on '+rows.length.toLocaleString()+' of '+data.length.toLocaleString()+' students'+(fdesc().length?' ('+fdesc().join(', ')+')':' (no filters applied)')+'. Updates as you change filters.'),h('ul',{'aria-live':'polite'},ins.map((t,i)=>h('li',{key:i},t)))),
+   div({className:'card',style:{marginBottom:16}},h('h2',null,'Student records'),dl&&div({className:'row',style:{marginTop:0,marginBottom:10}},h('button',{className:'alt',onClick:expRows},'Export filtered records (CSV)'),h('button',{className:'alt',onClick:expSum},'Export usage summary (CSV)'),h('button',{className:'alt',onClick:expIns},'Export findings (TXT)'),note&&h('span',{className:'muted',role:'status'},note)),
+    div({className:'row',style:{marginTop:0,marginBottom:10}},h('label',{style:{flex:'1 1 240px'}},'Search students',h('input',{type:'search',placeholder:'Type an ID, gender, level, platform, impact or age',value:q,onChange:e=>{setQ(e.target.value);setPg(0)}})),h('label',null,'Search in',h('select',{value:sf,onChange:e=>{setSf(e.target.value);setPg(0)},style:{maxWidth:170}},[['all','All fields'],['Student_ID','Student ID'],['Primary_Platform','Platform'],['Gender','Gender'],['Academic_Level','Academic level'],['Overall_Impact','Impact rating']].map(o=>h('option',{key:o[0],value:o[0]},o[1])))),q&&h('button',{className:'alt',onClick:()=>{setQ('');setPg(0)}},'Clear search')),
+    div({className:'tw'},h('table',null,h('thead',null,h('tr',null,TC.map(c=>h('th',{key:c[0]},c[1])))),
+     h('tbody',null,slice.map(r=>h('tr',{key:r.Student_ID},TC.map(c=>h('td',{key:c[0]},c[0]=='Overall_Impact'?h('span',{className:'tag',style:{background:COL[r[c[0]]]||'var(--muted)',color:'#10151d'}},r[c[0]]):r[c[0]]==null?'–':r[c[0]])))),slice.length==0&&h('tr',null,h('td',{colSpan:TC.length,className:'muted'},'No students match'+(s?' “'+q+'”':'')+'. Try a shorter search, a different field, or loosen the filters above.'))))),
+    div({className:'pg'},h('button',{className:'alt',disabled:cp==0,onClick:()=>setPg(cp-1)},'Previous'),h('span',{className:'muted'},'Page '+(cp+1)+' of '+pages+' ('+tbl.length.toLocaleString()+' records)'),h('button',{className:'alt',disabled:cp>=pages-1,onClick:()=>setPg(cp+1)},'Next'))),
+   div({className:'card muted',style:{fontSize:'.85rem'}},h('h2',null,'About this data'),h('ul',null,
+    h('li',null,'Public dataset. Relationships are correlational and do not show that social media causes the outcomes.'),
+    h('li',null,'“Overall impact” is a derived label whose formula is undocumented, so it is not independent evidence. The mental health index is a composite and may partly overlap with sleep and stress.'),
+    h('li',null,'The data is unusually clean and may be synthetic. Rows with missing stress or GPA values are left out of those averages only.'),
+    h('li',null,'Small groups (for example LinkedIn, Non-Binary) have few students, so treat their differences cautiously.')))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
